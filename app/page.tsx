@@ -1,31 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+
+type Book = { key: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; ebook_access?: string; ia?: string[]; publisher?: string[] };
+
+const coverUrl = (id?: number) => id ? `https://covers.openlibrary.org/b/id/${id}-M.jpg` : "https://placehold.co/180x250/111827/93c5fd?text=No+Cover";
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [access, setAccess] = useState("all");
+  const [sort, setSort] = useState("relevance");
 
-  return (
-    <main style={{ minHeight: "100vh", padding: "28px 6vw", background: "radial-gradient(circle at top, #18213d 0, #070a12 45%)" }}>
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1200, margin: "0 auto" }}>
-        <strong style={{ fontSize: 22 }}>📚 BookFinder AI</strong>
-        <button style={{ border: "1px solid #334155", background: "#111827", color: "white", borderRadius: 10, padding: "10px 16px" }}>Sign in</button>
-      </nav>
+  async function searchBooks(event?: FormEvent) {
+    event?.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setLoading(true); setError("");
+    try {
+      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(trimmed)}&limit=30&fields=key,title,author_name,first_publish_year,cover_i,ebook_access,ia,publisher`);
+      if (!response.ok) throw new Error("Search service is unavailable right now.");
+      const data = await response.json();
+      setResults(data.docs ?? []);
+    } catch (err) { setResults([]); setError(err instanceof Error ? err.message : "Something went wrong."); }
+    finally { setLoading(false); }
+  }
 
-      <section style={{ maxWidth: 900, margin: "110px auto 0", textAlign: "center" }}>
-        <div style={{ display: "inline-block", padding: "7px 12px", borderRadius: 999, background: "#172554", color: "#93c5fd", fontSize: 13, marginBottom: 18 }}>AI-powered learning library</div>
-        <h1 style={{ fontSize: "clamp(44px, 8vw, 78px)", lineHeight: 1.02, margin: 0 }}>Find. Read. <span style={{ color: "#60a5fa" }}>Learn.</span></h1>
-        <p style={{ color: "#94a3b8", fontSize: 18, maxWidth: 650, margin: "22px auto 34px" }}>Search books and trusted public resources, read supported documents in-site, and use AI to study across your sources.</p>
+  const filteredResults = useMemo(() => {
+    const filtered = results.filter((book) => access === "readable" ? book.ebook_access === "public" || (book.ia?.length ?? 0) > 0 : access === "borrow" ? book.ebook_access === "borrowable" : true);
+    if (sort === "year") return [...filtered].sort((a,b) => (b.first_publish_year ?? 0) - (a.first_publish_year ?? 0));
+    if (sort === "title") return [...filtered].sort((a,b) => (a.title ?? "").localeCompare(b.title ?? ""));
+    return filtered;
+  }, [results, access, sort]);
 
-        <div style={{ display: "flex", gap: 10, maxWidth: 720, margin: "0 auto", background: "#0f172a", padding: 8, border: "1px solid #334155", borderRadius: 16 }}>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a book, author, ISBN, or topic..." style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "white", padding: "14px 16px" }} />
-          <button onClick={() => alert(query ? `Searching for: ${query}` : "Enter a book or topic first") } style={{ border: 0, background: "#2563eb", color: "white", borderRadius: 11, padding: "0 22px", fontWeight: 700, cursor: "pointer" }}>Search</button>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 60, textAlign: "left" }}>
-          {[['🔎','Smart Search','Search across supported legal and open-access sources.'],['📖','In-site Reader','Read supported PDFs and documents without leaving the platform.'],['✨','AI Study','Summarize, explain, compare, and organize your study material.']].map(([icon,title,text]) => <div key={title} style={{ background: "rgba(15,23,42,.72)", border: "1px solid #1e293b", borderRadius: 18, padding: 22 }}><div style={{ fontSize: 28 }}>{icon}</div><h3>{title}</h3><p style={{ color: "#94a3b8", lineHeight: 1.6 }}>{text}</p></div>)}
-        </div>
-      </section>
-    </main>
-  );
+  return <main className="page-shell">
+    <nav className="nav"><a className="brand" href="#">📚 BookFinder <span>AI</span></a><div className="nav-links"><a href="#results">Browse</a><a href="#how">How it works</a><button className="signin">Sign in</button></div></nav>
+    <section className="hero">
+      <div className="badge">✦ AI-powered learning library</div>
+      <h1>Find books.<br /><span>Start learning.</span></h1>
+      <p>Search millions of books and discover legitimate open-access and library resources in one simple place.</p>
+      <form className="search-box" onSubmit={searchBooks}><span className="search-icon">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by book, author, ISBN, or topic..." aria-label="Book search" /><button type="submit">Search</button></form>
+      <div className="quick-searches">Try: <button type="button" onClick={() => { setQuery("Atomic Habits"); }}>Atomic Habits</button><button type="button" onClick={() => { setQuery("physics"); }}>Physics</button><button type="button" onClick={() => { setQuery("Harry Potter"); }}>Harry Potter</button></div>
+    </section>
+    <section id="results" className="results-section">
+      <div className="section-heading"><div><p className="eyebrow">DISCOVER</p><h2>{results.length ? `${filteredResults.length} books found` : "Your book search starts here"}</h2></div>{results.length > 0 && <div className="filters"><select value={access} onChange={(e) => setAccess(e.target.value)}><option value="all">All access</option><option value="readable">Read online</option><option value="borrow">Borrow</option></select><select value={sort} onChange={(e) => setSort(e.target.value)}><option value="relevance">Relevance</option><option value="year">Newest</option><option value="title">Title</option></select></div>}</div>
+      {loading && <div className="status">Searching the library…</div>}
+      {error && <div className="status error">{error}</div>}
+      {!loading && !error && results.length === 0 && <div className="empty"><div className="empty-icon">🔎</div><h3>Search for any book</h3><p>We’ll bring back titles, authors, publication details, covers, and available reading options.</p></div>}
+      <div className="book-grid">{filteredResults.map((book) => { const readId = book.ia?.[0]; const openUrl = `https://openlibrary.org${book.key}`; return <article className="book-card" key={book.key}><img src={coverUrl(book.cover_i)} alt="" loading="lazy" /><div className="book-info"><div className="book-title">{book.title ?? "Untitled"}</div><div className="author">{book.author_name?.slice(0,2).join(", ") || "Unknown author"}</div><div className="meta">{book.first_publish_year || "Year unknown"}{book.publisher?.[0] ? ` · ${book.publisher[0]}` : ""}</div><div className="card-actions">{readId ? <a className="read-btn" href={`https://archive.org/details/${readId}`} target="_blank" rel="noreferrer">Read / borrow ↗</a> : <a className="outline-btn" href={openUrl} target="_blank" rel="noreferrer">View editions ↗</a>}</div></div></article>; })}</div>
+    </section>
+    <section id="how" className="features"><div><div className="feature-icon">🔎</div><h3>Smart discovery</h3><p>Search titles, authors, ISBNs and topics with fast library-powered results.</p></div><div><div className="feature-icon">📖</div><h3>Legal access</h3><p>Surface public-domain, open-access and library borrowing options instead of random pirate copies.</p></div><div><div className="feature-icon">✨</div><h3>AI study tools</h3><p>Next, we can add summaries, explanations, notes and source-based study assistance.</p></div></section>
+    <footer>BookFinder AI · Built for students · Search powered by Open Library</footer>
+  </main>;
 }
