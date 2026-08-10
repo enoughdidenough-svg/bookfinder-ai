@@ -20,7 +20,7 @@ export default function Home() {
     if (!trimmed) return;
     setLoading(true); setError("");
     try {
-      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(trimmed)}&limit=30&fields=key,title,author_name,first_publish_year,cover_i,ebook_access,ia,publisher`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`);
       if (!response.ok) throw new Error("Search service is unavailable right now.");
       const data = await response.json();
       setResults(data.docs ?? []);
@@ -36,22 +36,24 @@ export default function Home() {
   }, [results, access, sort]);
 
   return <main className="page-shell">
-    <nav className="nav"><a className="brand" href="#">📚 BookFinder <span>AI</span></a><div className="nav-links"><a href="#results">Browse</a><a href="#how">How it works</a><button className="signin">Sign in</button></div></nav>
+    <nav className="nav"><a className="brand" href="#">📚 BookFinder <span>AI</span></a><div className="nav-links"><a href="#results">Browse</a><a href="#features">Features</a><a href="/pricing">Pro AI</a><a className="signin" href="/pricing">Unlock Pro</a></div></nav>
     <section className="hero">
-      <div className="badge">✦ AI-powered learning library</div>
-      <h1>Find books.<br /><span>Start learning.</span></h1>
-      <p>Search millions of books and discover legitimate open-access and library resources in one simple place.</p>
+      <div className="badge">✦ The student research engine</div>
+      <h1>Find books.<br /><span>Think bigger.</span></h1>
+      <p>Search books, library records and legitimate reading options in one fast place. Then use BookFinder Pro to turn trusted sources into smarter study work.</p>
       <form className="search-box" onSubmit={searchBooks}><span className="search-icon">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by book, author, ISBN, or topic..." aria-label="Book search" /><button type="submit">Search</button></form>
-      <div className="quick-searches">Try: <button type="button" onClick={() => { setQuery("Atomic Habits"); }}>Atomic Habits</button><button type="button" onClick={() => { setQuery("physics"); }}>Physics</button><button type="button" onClick={() => { setQuery("Harry Potter"); }}>Harry Potter</button></div>
+      <div className="quick-searches">Try: <button type="button" onClick={() => setQuery("Atomic Habits")}>Atomic Habits</button><button type="button" onClick={() => setQuery("physics")}>Physics</button><button type="button" onClick={() => setQuery("machine learning")}>Machine learning</button></div>
+      <div className="hero-stats"><span><b>Millions</b> of catalog records</span><span><b>Legal-first</b> access discovery</span><span><b>Pro AI</b> source synthesis</span></div>
     </section>
     <section id="results" className="results-section">
-      <div className="section-heading"><div><p className="eyebrow">DISCOVER</p><h2>{results.length ? `${filteredResults.length} books found` : "Your book search starts here"}</h2></div>{results.length > 0 && <div className="filters"><select value={access} onChange={(e) => setAccess(e.target.value)}><option value="all">All access</option><option value="readable">Read online</option><option value="borrow">Borrow</option></select><select value={sort} onChange={(e) => setSort(e.target.value)}><option value="relevance">Relevance</option><option value="year">Newest</option><option value="title">Title</option></select></div>}</div>
-      {loading && <div className="status">Searching the library…</div>}
+      <div className="section-heading"><div><p className="eyebrow">DISCOVER</p><h2>{results.length ? `${filteredResults.length} books found` : "Your research library"}</h2></div>{results.length > 0 && <div className="filters"><select value={access} onChange={(e) => setAccess(e.target.value)}><option value="all">All access</option><option value="readable">Read online</option><option value="borrow">Borrow</option></select><select value={sort} onChange={(e) => setSort(e.target.value)}><option value="relevance">Relevance</option><option value="year">Newest</option><option value="title">Title</option></select></div>}</div>
+      {loading && <div className="status"><span className="spinner" /> Searching library records…</div>}
       {error && <div className="status error">{error}</div>}
-      {!loading && !error && results.length === 0 && <div className="empty"><div className="empty-icon">🔎</div><h3>Search for any book</h3><p>We’ll bring back titles, authors, publication details, covers, and available reading options.</p></div>}
+      {!loading && !error && results.length === 0 && <div className="empty"><div className="empty-icon">✦</div><h3>Search for a book, topic, or author</h3><p>BookFinder returns titles, authors, publication details, covers, and legitimate reading or borrowing options.</p></div>}
       <div className="book-grid">{filteredResults.map((book) => { const readId = book.ia?.[0]; const openUrl = `https://openlibrary.org${book.key}`; return <article className="book-card" key={book.key}><img src={coverUrl(book.cover_i)} alt="" loading="lazy" /><div className="book-info"><div className="book-title">{book.title ?? "Untitled"}</div><div className="author">{book.author_name?.slice(0,2).join(", ") || "Unknown author"}</div><div className="meta">{book.first_publish_year || "Year unknown"}{book.publisher?.[0] ? ` · ${book.publisher[0]}` : ""}</div><div className="card-actions">{readId ? <a className="read-btn" href={`https://archive.org/details/${readId}`} target="_blank" rel="noreferrer">Read / borrow ↗</a> : <a className="outline-btn" href={openUrl} target="_blank" rel="noreferrer">View editions ↗</a>}</div></div></article>; })}</div>
     </section>
-    <section id="how" className="features"><div><div className="feature-icon">🔎</div><h3>Smart discovery</h3><p>Search titles, authors, ISBNs and topics with fast library-powered results.</p></div><div><div className="feature-icon">📖</div><h3>Legal access</h3><p>Surface public-domain, open-access and library borrowing options instead of random pirate copies.</p></div><div><div className="feature-icon">✨</div><h3>AI study tools</h3><p>Next, we can add summaries, explanations, notes and source-based study assistance.</p></div></section>
-    <footer>BookFinder AI · Built for students · Search powered by Open Library</footer>
+    <section id="features" className="features"><div><div className="feature-icon">⌕</div><h3>Deep discovery</h3><p>Search titles, authors, ISBNs and topics with library-powered results and useful filters.</p></div><div><div className="feature-icon">◈</div><h3>Legal-first access</h3><p>We prioritize public-domain, open-access and library borrowing routes instead of promising pirated copies.</p></div><div><div className="feature-icon">✦</div><h3>Pro AI Research</h3><p>Upgrade for an advanced research workspace that can organize sources, explain difficult material and help build assignment-ready study notes.</p><a className="feature-link" href="/pricing">See Pro →</a></div></section>
+    <section className="pro-banner"><div><p className="eyebrow">BOOKFINDER PRO</p><h2>One workspace for serious students.</h2><p>Bring multiple books, reports, magazines and summaries into one AI-assisted research workflow.</p></div><a href="/pricing">Get Pro for $5/mo →</a></section>
+    <footer>BookFinder AI · Built for students · Search powered by Open Library · Pro payments use USDT on TRON</footer>
   </main>;
 }
